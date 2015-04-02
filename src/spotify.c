@@ -109,15 +109,15 @@ static SP_CALLCONV void spotify_play_token_lost(sp_session *sess);
 static SP_CALLCONV void spotify_end_of_track(sp_session *sess);
 
 static sp_session_callbacks spotify_session_callbacks = {
-	.logged_in = &spotify_logged_in,
+    .logged_in = &spotify_logged_in,
     .logged_out = &spotify_logged_out,
-	.notify_main_thread = &spotify_notify_main_thread,
-	.music_delivery = &spotify_music_delivery,
-	.metadata_updated = &spotify_metadata_updated,
-	.play_token_lost = &spotify_play_token_lost,
-	.log_message = &spotify_log_message,
+    .notify_main_thread = &spotify_notify_main_thread,
+    .music_delivery = &spotify_music_delivery,
+    .metadata_updated = &spotify_metadata_updated,
+    .play_token_lost = &spotify_play_token_lost,
+    .log_message = &spotify_log_message,
     .message_to_user = &spotify_message_to_user,
-	.end_of_track = &spotify_end_of_track,
+    .end_of_track = &spotify_end_of_track,
 };
 
 static sp_session_config spconfig = {
