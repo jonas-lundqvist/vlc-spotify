@@ -1,0 +1,21 @@
+Known issues:
+
+* Seek during pause unimplemented.
+* Crashes when seeking many times (libspotify bug?)
+* Crashes at sp_session_logout (libspotify bug?)
+* Crashes when setting the settings directory and logging out (libspotify bug?)
+
+Short term:
+
+* User specified spotify-cache directory
+* Proper buildsystem (CMake?)
+* Some tests
+* Update URI Parser to handle file://
+
+Long term:
+
+* Support playlist and album URIs
+* Persistant spotify session
+* Cross compile for windows
+* More user settings
+* Spotify-settings directory

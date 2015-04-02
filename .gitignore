@@ -1,0 +1,4 @@
+asdf/*
+src/*.o
+src/*.so
+src/appkey.c
