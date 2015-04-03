@@ -1,7 +1,6 @@
 Known issues:
 
 * Seek during pause unimplemented.
-* Crashes when seeking many times (libspotify bug?)
 * Crashes at sp_session_logout (libspotify bug?)
 * Crashes when setting the settings directory and logging out (libspotify bug?)
 

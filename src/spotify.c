@@ -621,6 +621,9 @@ static SP_CALLCONV int spotify_music_delivery(sp_session *sess, const sp_audiofo
     block_t *p_block;
     int delivery_bytes;
 
+    if (unlikely(num_frames == 0))
+        return 0;
+
     vlc_mutex_lock(&p_sys->audio_lock);
 
     if (unlikely(p_sys->format_set == false)) {
@@ -640,11 +643,6 @@ static SP_CALLCONV int spotify_music_delivery(sp_session *sess, const sp_audiofo
         date_Set(&p_sys->pts, VLC_TS_0);
         date_Set(&p_sys->starttime, mdate());
         p_sys->format_set = true;
-    }
-
-    if (unlikely(num_frames == 0)) {
-        vlc_mutex_unlock(&p_sys->audio_lock);
-        return 0;
     }
 
     pts = date_Get(&p_sys->pts);
