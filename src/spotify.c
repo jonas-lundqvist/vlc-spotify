@@ -297,7 +297,6 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
     double *pd;
     double d;
     vlc_meta_t *p_meta;
-    mtime_t pos_us;
 
     switch(i_query)
     {
@@ -349,14 +348,13 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
         return VLC_SUCCESS;
 
     case DEMUX_SET_POSITION:
-        // TODO: Handle SET_POSITION during pause
         d = (double) va_arg(args, double);
         vlc_mutex_lock(&p_sys->audio_lock);
-        pos_us = (d * (p_sys->duration));
-        msg_Dbg(p_demux, "> sp_session_player_seek(%f)", (double) pos_us/1000);
-        sp_session_player_seek(p_sys->p_session, (double) pos_us / 1000);
-        date_Set(&p_sys->pts, pos_us);
-        date_Set(&p_sys->starttime, mdate() - pos_us);
+        p_sys->pts_offset = (d * (p_sys->duration));
+        msg_Dbg(p_demux, "> sp_session_player_seek()");
+        sp_session_player_seek(p_sys->p_session, (double) p_sys->pts_offset / 1000);
+        date_Set(&p_sys->pts, p_sys->pts_offset);
+        date_Set(&p_sys->starttime, mdate() - p_sys->pts_offset);
         vlc_mutex_unlock(&p_sys->audio_lock);
         return VLC_SUCCESS;
 
