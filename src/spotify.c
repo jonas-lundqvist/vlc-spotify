@@ -330,6 +330,7 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
     case DEMUX_SET_TIME:
         i64 = (int64_t) va_arg(args, int64_t);
         vlc_mutex_lock(&p_sys->audio_lock);
+        p_sys->pts_offset = i64;
         msg_Dbg(p_demux, "> sp_session_player_seek()");
         sp_session_player_seek(p_sys->p_session, i64/1000);
         date_Set(&p_sys->pts, i64);
