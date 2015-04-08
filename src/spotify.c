@@ -369,7 +369,7 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
         pi64 = (int64_t*) va_arg(args, int64_t *);
         *pi64 = p_sys->duration;
         return VLC_SUCCESS;
-    
+
     case DEMUX_CAN_CONTROL_PACE:
     case DEMUX_CAN_CONTROL_RATE:
         pb = (bool*) va_arg(args, bool *);
