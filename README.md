@@ -10,13 +10,13 @@ I did this to play around with libspotify and VLC.
 Prerequisites
 =============
  * Spotify Preemium account
- * libspotify
- * libspotify api key
+ * libspotify (https://developer.spotify.com/technologies/libspotify/)
+ * libspotify application key (https://devaccount.spotify.com/my-account/keys/)
  * VLC headers and libraries
 
 Installation
 ============
-Get an api key from spotify and copy it to *src/appkey.c*.
+Get an appkey from spotify and copy it to *src/appkey.c*.
 View and edit the Makefile in the *src/* directory if necessary.
 Type *make*.
 Copy the *src/libspotify_plugin.so* to the vlc access plugins folder, possibly */usr/lib/vlc/plugins/access*
