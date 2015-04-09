@@ -498,10 +498,10 @@ static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error)
     sp_link *link;
     msg_Dbg(p_demux, "< logged_in()");
 
-	if (SP_ERROR_OK != error) {
+    if (SP_ERROR_OK != error) {
         dialog_Fatal(p_demux, "Login Error: ","%s", sp_error_message(error));
         return;
-	}
+    }
 
     link = sp_link_create_from_string(p_sys->psz_uri);
     msg_Dbg(p_demux, "> sp_track_add_ref(sp_link_as_track())");
