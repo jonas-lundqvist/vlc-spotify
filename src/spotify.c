@@ -332,9 +332,9 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
         vlc_mutex_lock(&p_sys->audio_lock);
         p_sys->pts_offset = i64;
         msg_Dbg(p_demux, "> sp_session_player_seek()");
-        sp_session_player_seek(p_sys->p_session, i64/1000);
-        date_Set(&p_sys->pts, i64);
-        date_Set(&p_sys->starttime, mdate() - i64);
+        sp_session_player_seek(p_sys->p_session, p_sys->pts_offset / 1000);
+        date_Set(&p_sys->pts, p_sys->pts_offset);
+        date_Set(&p_sys->starttime, mdate() - p_sys->pts_offset);
         vlc_mutex_unlock(&p_sys->audio_lock);
         return VLC_SUCCESS;
 
@@ -353,7 +353,7 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
         vlc_mutex_lock(&p_sys->audio_lock);
         p_sys->pts_offset = (d * (p_sys->duration));
         msg_Dbg(p_demux, "> sp_session_player_seek()");
-        sp_session_player_seek(p_sys->p_session, (double) p_sys->pts_offset / 1000);
+        sp_session_player_seek(p_sys->p_session, p_sys->pts_offset / 1000);
         date_Set(&p_sys->pts, p_sys->pts_offset);
         date_Set(&p_sys->starttime, mdate() - p_sys->pts_offset);
         vlc_mutex_unlock(&p_sys->audio_lock);
