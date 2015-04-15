@@ -15,6 +15,5 @@ Long term:
 
 * Support playlist and album URIs
 * Persistant spotify session
-* Cross compile for windows
 * More user settings
 * Spotify-settings directory
