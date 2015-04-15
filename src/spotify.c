@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define VLC_MODULE_COPYRIGHT "Copyright (C) 2015 Jonas Lundqvist"
+#define VLC_MODULE_LICENSE VLC_LICENSE_LGPL_2_1_PLUS
+
 // VLC includes
 #include <vlc_common.h>
 #include <vlc_plugin.h>
