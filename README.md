@@ -18,8 +18,21 @@ Installation
 ============
 Get an appkey from spotify and copy it to *src/appkey.c*.
 View and edit the Makefile in the *src/* directory if necessary.
+
+For \*nix
+---------
 Type *make*.
 Copy the *src/libspotify_plugin.so* to the vlc access plugins folder, possibly */usr/lib/vlc/plugins/access*
+
+For win32
+---------
+The plugin is cross-compiled using mingw. Please note that the win32 version of VLC is needed and it will not work with the 64 bit version due to Spotify not providing a 64 bit library for Windows.
+
+Unzip the libspotify zip file (from spotify) somewhere and set the *$LIBSPOTIFY_WIN32_DIR* to that base path.
+Copy *extras/libspotify.def* to the same directory as the *libspotify.dll*, ie *$LIBSPOTIFY_WIN32_DIR/lib* and cd to that directory. Run *i686-w64-mingw32-dlltool -U -d libspotify.def -l libspotify.a*
+
+Back in the *src/* directory run *make OS=win32*.
+Copy the *libspotify_plugin.dll* to the windows systems *vlc/plugins/access/* folder
 
 Usage
 =====
