@@ -1,0 +1,26 @@
+; i686-w64-mingw32-dlltool -z libspotify.def --export-all-symbol libspotify.dll
+LIBRARY LIBSPOTIFY.DLL
+EXPORTS
+sp_session_player_play@8
+sp_session_player_seek@8
+sp_album_name@4
+sp_artist_name@4
+sp_session_userdata@4
+sp_link_release@4
+sp_track_add_ref@4
+sp_link_as_track@4
+sp_session_release@4
+sp_session_player_load@8
+sp_track_duration@4
+sp_session_create@8
+sp_error_message@4
+sp_session_login@20
+sp_session_process_events@8
+sp_track_release@4
+sp_session_player_unload@4
+sp_session_forget_me@4
+sp_session_logout@4
+sp_link_create_from_string@4
+sp_track_name@4
+sp_track_album@4
+sp_track_artist@8
