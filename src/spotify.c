@@ -41,6 +41,12 @@
 
 #define START_STOP_PROCEDURE_TIMEOUT_US 5000000
 
+#ifndef _WIN32
+#define VLC_SPOTIFY_CACHE_DIR "/tmp/spot"
+#else
+#define VLC_SPOTIFY_CACHE_DIR "C:\\temp\\spot"
+#endif
+
 typedef enum {
     CLEANUP_NOT_STARTED,
     CLEANUP_PENDING,
@@ -125,7 +131,7 @@ static sp_session_callbacks spotify_session_callbacks = {
 
 static sp_session_config spconfig = {
     .api_version = SPOTIFY_API_VERSION,
-    .cache_location = "/tmp/spot", // TODO: path to vlc data?
+    .cache_location = VLC_SPOTIFY_CACHE_DIR, // TODO: path to vlc data?
     //.settings_location = "/tmp/spot", // Crashes at logout when enabled (!)
     .application_key = g_appkey,
     .application_key_size = 0,
