@@ -140,6 +140,9 @@ static sp_session_config spconfig = {
     NULL,
 };
 
+static const char * const pref_bitrate_text[] = { "96 kbps", "160 kbps", "320 kbps" };
+static const sp_bitrate pref_bitrate[] = { SP_BITRATE_96k, SP_BITRATE_160k, SP_BITRATE_320k };
+
 vlc_module_begin()
     set_shortname("Spotify")
     set_description("Stream from Spotify")
@@ -155,6 +158,8 @@ vlc_module_begin()
                 "Username", "Spotify Username", false)
     add_password("spotify-password", "",
                 "Password", "Spotify Password", false)
+    add_integer("preferred_bitrate", SP_BITRATE_320k, "Preferred bitrate", "The preferred bitrate of the audio", true)
+        change_integer_list(pref_bitrate, pref_bitrate_text)
     // TODO: Add 'spotify social'
 vlc_module_end ()
 
@@ -413,6 +418,7 @@ static void *Run(void *data)
     char        *psz_password;
     int          spotify_timeout = 0;
     mtime_t      spotify_timeout_us;
+    sp_bitrate   spotify_bitrate;
 
     psz_username = var_InheritString(p_demux, "spotify-username");
     psz_password = var_InheritString(p_demux, "spotify-password");
@@ -427,6 +433,13 @@ static void *Run(void *data)
 
     if (SP_ERROR_OK != err) {
         dialog_Fatal(p_demux, "Spotify session error: ", "%s", sp_error_message(err));
+    }
+
+    spotify_bitrate = var_InheritInteger(p_demux, "preferred_bitrate");
+    msg_Dbg(p_demux, "> sp_session_preferred_bitrate(%d)", spotify_bitrate);
+    err = sp_session_preferred_bitrate(p_sys->p_session, spotify_bitrate);
+    if (SP_ERROR_OK != err) {
+        msg_Dbg(p_demux, "Error setting the preferred bitrate");
     }
 
     msg_Dbg(p_demux, "> sp_session_login()");
