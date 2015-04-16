@@ -23,7 +23,7 @@
 
 typedef enum {
     SPOTIFY_TRACK,
-    SPOTIFY_ALBUM, // Not supported yet
+    SPOTIFY_ALBUM,
     SPOTIFY_PLAYLIST, // Not supported yet
     SPOTIFY_UNKNOWN
 } spotify_type_e;

@@ -43,16 +43,26 @@ spotify_type_e ParseURI(const char *uri_in, char *uri_out)
         return SPOTIFY_UNKNOWN;
     }
 
-    // Find 'spotify:track:' and make sure it is in the start
-    tmp = strstr(psz_parser, "spotify:track:");
+    // Find 'spotify:' and make sure it is in the start
+    tmp = strstr(psz_parser, "spotify:");
     if (tmp != psz_parser) {
         free(psz_dup);
         return SPOTIFY_UNKNOWN;
     }
 
-    spotify_type = SPOTIFY_TRACK;
-    psz_parser += 14;
+    psz_parser += 8;
 
+    if ((tmp = strstr(psz_parser, "track:")) == psz_parser) {
+        spotify_type = SPOTIFY_TRACK;
+        psz_parser += 6;
+    } else if ((tmp = strstr(psz_parser, "album:")) == psz_parser) {
+        spotify_type = SPOTIFY_ALBUM;
+        psz_parser += 6;
+    } else {
+        spotify_type = SPOTIFY_UNKNOWN;
+    }
+
+    // Check that the id is 22 chars
     if (strlen(psz_parser) != 22) {
         spotify_type = SPOTIFY_UNKNOWN;
     }

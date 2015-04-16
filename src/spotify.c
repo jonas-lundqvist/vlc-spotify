@@ -179,7 +179,8 @@ static int Open(vlc_object_t *obj)
 
     msg_Dbg(p_demux, "URI is %s", p_demux->psz_location);
 
-    if (spotify_type == SPOTIFY_UNKNOWN) {
+    // TODO: Support more stuff then just tracks
+    if (spotify_type != SPOTIFY_TRACK) {
         free(p_sys);
         return VLC_EGENERIC;
     }
