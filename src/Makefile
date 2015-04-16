@@ -25,6 +25,7 @@ TARGET = libspotify_plugin.so
 ifeq ($(OS),win32)
 	TARGET = libspotify_plugin.dll
 endif
+TARGETS_ALL = libspotify_plugin.*
 
 SOURCES= spotify.c appkey.c uriparser.c
 OBJECTS=$(SOURCES:.c=.o)
@@ -44,7 +45,7 @@ uriparser.o: uriparser.c uriparser.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 clean:
-	$(RM) $(TARGET) $(OBJECTS)
+	$(RM) $(TARGETS_ALL) $(OBJECTS)
 
 install:
 	cp libspotify_plugin.so /usr/lib/vlc/plugins/access
