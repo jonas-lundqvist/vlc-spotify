@@ -34,6 +34,7 @@
 #include <vlc_threads.h>
 #include <vlc_meta.h>
 #include <vlc_dialog.h>
+#include <vlc_input.h>
 
 #include <libspotify/api.h>
 
@@ -62,6 +63,7 @@ struct demux_sys_t {
     vlc_mutex_t     lock;
     vlc_mutex_t     audio_lock;
     vlc_mutex_t     cleanup_lock;
+    vlc_mutex_t     playlist_lock;
 
     bool            spotify_notification;
     bool            play_started;
@@ -71,7 +73,9 @@ struct demux_sys_t {
 
     cleanup_state_e cleanup;
 
+    spotify_type_e  spotify_type;
     char           *psz_uri;
+    bool            playlist_meta_set;
 
     char           *psz_meta_artist;
     char           *psz_meta_track;
@@ -89,6 +93,8 @@ struct demux_sys_t {
     // while playing one track.
     sp_session     *p_session;
     sp_track       *p_track;
+    sp_album       *p_album;
+    sp_albumbrowse *p_albumbrowse;
 };
 
 extern const uint8_t g_appkey[];
@@ -100,11 +106,14 @@ static void Close(vlc_object_t *object);
 
 // Needed for VLC demux module
 static int Control(demux_t *p_demux, int i_query, va_list args);
+static int PlaylistControl(demux_t *p_demux, int i_query, va_list args);
 static int Demux(demux_t *p_demux);
 
 static void *spotify_thread(void *data);
 static void cleanup_spotify_thread(void *data);
 void set_track_meta(demux_sys_t *p_sys);
+input_item_t *get_current_item(demux_t *p_demux);
+static void playlist_meta_done(sp_albumbrowse *result, void *userdata);
 
 static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error);
 static SP_CALLCONV void spotify_logged_out(sp_session *sess);
@@ -175,18 +184,22 @@ static int Open(vlc_object_t *obj)
     p_demux->p_sys = p_sys;
 
     // TODO, set p_sys->psz_uri as 2nd parameter
-    spotify_type_e spotify_type = ParseURI(p_demux->psz_location, NULL);
+    p_sys->spotify_type = ParseURI(p_demux->psz_location, NULL);
 
     msg_Dbg(p_demux, "URI is %s", p_demux->psz_location);
 
-    // TODO: Support more stuff then just tracks
-    if (spotify_type != SPOTIFY_TRACK) {
+    // TODO: Support playlists (and more?)
+    if (p_sys->spotify_type != SPOTIFY_TRACK && p_sys->spotify_type != SPOTIFY_ALBUM) {
         free(p_sys);
         return VLC_EGENERIC;
     }
 
     p_demux->pf_demux = Demux;
-    p_demux->pf_control = Control;
+
+    if (p_sys->spotify_type == SPOTIFY_TRACK)
+        p_demux->pf_control = Control;
+    else
+        p_demux->pf_control = PlaylistControl;
 
     p_sys->start_procedure_done = false;
     p_sys->start_procedure_succesful = false;
@@ -194,6 +207,7 @@ static int Open(vlc_object_t *obj)
     vlc_mutex_init(&p_sys->lock);
     vlc_mutex_init(&p_sys->cleanup_lock);
     vlc_mutex_init(&p_sys->audio_lock);
+    vlc_mutex_init(&p_sys->playlist_lock);
     vlc_cond_init(&p_sys->wait);
 
     p_sys->play_started = false;
@@ -203,6 +217,7 @@ static int Open(vlc_object_t *obj)
     p_sys->p_session = NULL;
     p_sys->p_es_audio = NULL;
     p_sys->pts_offset = 0;
+    p_sys->playlist_meta_set = false;
 
     p_sys->psz_meta_track = p_sys->psz_meta_artist = p_sys->psz_meta_album = NULL;
 
@@ -212,6 +227,7 @@ static int Open(vlc_object_t *obj)
         vlc_mutex_destroy(&p_sys->lock);
         vlc_mutex_destroy(&p_sys->cleanup_lock);
         vlc_mutex_destroy(&p_sys->audio_lock);
+        vlc_mutex_destroy(&p_sys->playlist_lock);
         free(p_sys->psz_uri);
         free(p_sys);
         return VLC_ENOMEM;
@@ -273,6 +289,7 @@ static void Close(vlc_object_t *obj)
     vlc_mutex_destroy(&p_sys->lock);
     vlc_mutex_destroy(&p_sys->cleanup_lock);
     vlc_mutex_destroy(&p_sys->audio_lock);
+    vlc_mutex_destroy(&p_sys->playlist_lock);
 
     // TODO: Create a function for this when adding more meta data
     if (p_sys->psz_meta_track)
@@ -287,12 +304,39 @@ static void Close(vlc_object_t *obj)
     msg_Dbg(p_demux, "Closed succesfully");
 }
 
-// Ugly hack. It seems like this is the only way to signal EOF
-// TODO: es_out_Eos() might be something interesting...
 static int Demux(demux_t *p_demux)
 {
     demux_sys_t *p_sys = p_demux->p_sys;
 
+    msg_Dbg(p_demux, "Demux...");
+    vlc_mutex_lock(&p_sys->playlist_lock);
+    if (p_sys->playlist_meta_set == true) {
+        msg_Dbg(p_demux, "Demuxing an album!");
+        /*input_item_t *p_new_input;
+        input_item_t *p_current_input = get_current_item(p_demux);
+
+        input_item_node_t *p_input_node = NULL;
+        p_input_node = input_item_node_Create(p_current_input);
+
+        p_new_input = input_item_New("spotify://spotify:track:asdf", "spotify:track:qwerty");
+        input_item_CopyOptions(p_input_node->p_item, p_new_input);
+        input_item_node_AppendItem(p_input_node, p_new_input);
+        vlc_gc_decref(p_new_input);
+
+        input_item_node_PostAndDelete(p_input_node);
+        p_input_node = NULL;
+        vlc_gc_decref(p_current_input);
+        testDemux = 1;*/
+
+        vlc_mutex_unlock(&p_sys->playlist_lock);
+
+        return 0;
+    }
+    vlc_mutex_unlock(&p_sys->playlist_lock);
+
+
+    // Ugly hack. It seems like this is the only way to signal EOF
+    // TODO: es_out_Eos() might be something interesting...
     if (p_sys->p_es_audio == NULL && p_sys->format_set == true)
         return 0; // EOF, will close the module
 
@@ -408,6 +452,12 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
     return VLC_EGENERIC;
 }
 
+static int PlaylistControl(demux_t *p_demux, int i_query, va_list args)
+{
+    return VLC_EGENERIC;
+}
+
+
 // TODO: Put the login and creation of the Spotify session somewhere else.
 static void *spotify_thread(void *data)
 {
@@ -473,11 +523,18 @@ static void *spotify_thread(void *data)
         // CLEANUP_PENDING is set from Close()
         vlc_mutex_lock(&p_sys->cleanup_lock);
         if (p_sys->cleanup == CLEANUP_PENDING) {
-            msg_Dbg(p_demux, "> sp_track_release()");
-            sp_track_release(p_sys->p_track);
-            p_sys->p_track = NULL;
-            msg_Dbg(p_demux, "> sp_player_unload()");
-            sp_session_player_unload(p_sys->p_session);
+            if (p_sys->spotify_type == SPOTIFY_TRACK) {
+                msg_Dbg(p_demux, "> sp_track_release()");
+                sp_track_release(p_sys->p_track);
+                p_sys->p_track = NULL;
+                msg_Dbg(p_demux, "> sp_player_unload()");
+                sp_session_player_unload(p_sys->p_session);
+            } else if (p_sys->spotify_type == SPOTIFY_TRACK) {
+                msg_Dbg(p_demux, "> sp_album_release()");
+                sp_album_release(p_sys->p_album);
+                p_sys->p_album = NULL;
+            }
+
             msg_Dbg(p_demux, "> sp_session_forget_me()");
             sp_session_forget_me(p_sys->p_session);
             msg_Dbg(p_demux, "> sp_session_logout()");
@@ -518,6 +575,7 @@ static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error)
     demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
     demux_sys_t *p_sys = p_demux->p_sys;
 
+
     sp_link *link;
     msg_Dbg(p_demux, "< logged_in()");
 
@@ -526,11 +584,19 @@ static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error)
         return;
     }
 
-    link = sp_link_create_from_string(p_sys->psz_uri);
-    msg_Dbg(p_demux, "> sp_track_add_ref(sp_link_as_track())");
-    sp_track_add_ref(p_sys->p_track = sp_link_as_track(link));
-    msg_Dbg(p_demux, "> sp_link_release()");
-    sp_link_release(link);
+    if (p_sys->spotify_type == SPOTIFY_TRACK) {
+        link = sp_link_create_from_string(p_sys->psz_uri);
+        msg_Dbg(p_demux, "> sp_track_add_ref(sp_link_as_track())");
+        sp_track_add_ref(p_sys->p_track = sp_link_as_track(link));
+        msg_Dbg(p_demux, "> sp_link_release()");
+        sp_link_release(link);
+    } else if (p_sys->spotify_type == SPOTIFY_ALBUM) {
+        link = sp_link_create_from_string(p_demux->psz_location);
+        msg_Dbg(p_demux, "> sp_album_add_ref(sp_link_as_album())");
+        sp_album_add_ref(p_sys->p_album = sp_link_as_album(link));
+        msg_Dbg(p_demux, "> sp_albumbrowse_create()");
+        p_sys->p_albumbrowse = sp_albumbrowse_create(p_sys->p_session, p_sys->p_album, playlist_meta_done, p_demux);
+    }
 
     p_sys->format_set = false;
 }
@@ -554,22 +620,27 @@ static SP_CALLCONV void spotify_metadata_updated(sp_session *sess)
     demux_sys_t *p_sys = p_demux->p_sys;
 
     msg_Dbg(p_demux, "< metadata_updated()");
-    msg_Dbg(p_demux, "> sp_session_player_load()");
-    vlc_mutex_lock(&p_sys->audio_lock);
-    sp_session_player_load(p_sys->p_session, p_sys->p_track);
-    msg_Dbg(p_demux, "> sp_session_player_play()");
-    sp_session_player_play(p_sys->p_session, 1);
-    p_sys->duration = sp_track_duration(p_sys->p_track)*1000;
-    vlc_mutex_unlock(&p_sys->audio_lock);
 
-    if (p_sys->play_started == false) {
-        // Signal back that the start is done so Open() can return
-        vlc_mutex_lock(&p_sys->lock);
-        p_sys->start_procedure_done = true;
-        p_sys->start_procedure_succesful = true;
-        vlc_cond_signal(&p_sys->wait);
-        p_sys->play_started = true;
-        vlc_mutex_unlock(&p_sys->lock);
+    if (p_sys->spotify_type == SPOTIFY_TRACK) {
+        msg_Dbg(p_demux, "> sp_session_player_load()");
+        vlc_mutex_lock(&p_sys->audio_lock);
+        sp_session_player_load(p_sys->p_session, p_sys->p_track);
+        msg_Dbg(p_demux, "> sp_session_player_play()");
+        sp_session_player_play(p_sys->p_session, 1);
+        p_sys->duration = sp_track_duration(p_sys->p_track)*1000;
+        vlc_mutex_unlock(&p_sys->audio_lock);
+
+        if (p_sys->play_started == false) {
+            // Signal back that the start is done so Open() can return
+            vlc_mutex_lock(&p_sys->lock);
+            p_sys->start_procedure_done = true;
+            p_sys->start_procedure_succesful = true;
+            vlc_cond_signal(&p_sys->wait);
+            p_sys->play_started = true;
+            vlc_mutex_unlock(&p_sys->lock);
+        }
+    } else {
+        msg_Dbg(p_demux, "Ignored...");
     }
 }
 
@@ -726,4 +797,35 @@ void set_track_meta(demux_sys_t *p_sys)
 
     if (p_sys->psz_meta_artist == NULL && sp_artist_name(artist))
         p_sys->psz_meta_artist = strdup(sp_artist_name(artist));
+}
+
+static void playlist_meta_done(sp_albumbrowse *result, void *userdata)
+{
+    demux_t *p_demux = (demux_t *) userdata;
+    demux_sys_t *p_sys = p_demux->p_sys;
+
+    msg_Dbg(p_demux, "< playlist_meta_done! Waiting for Demux");
+
+    vlc_mutex_lock(&p_sys->playlist_lock);
+    p_sys->playlist_meta_set = true;
+    vlc_mutex_unlock(&p_sys->playlist_lock);
+
+    msg_Dbg(p_demux, "< sp_albumbrowse_release()");
+    sp_albumbrowse_release(p_sys->p_albumbrowse);
+
+    vlc_mutex_lock(&p_sys->lock);
+    p_sys->start_procedure_done = true;
+    p_sys->start_procedure_succesful = true;
+    vlc_cond_signal(&p_sys->wait);
+    p_sys->play_started = true;
+    vlc_mutex_unlock(&p_sys->lock);
+}
+
+input_item_t *get_current_item(demux_t *p_demux)
+{
+    input_thread_t *p_input_thread = demux_GetParentInput( p_demux );
+    input_item_t *p_current_input = input_GetItem( p_input_thread );
+    vlc_gc_incref(p_current_input);
+    vlc_object_release(p_input_thread);
+    return p_current_input;
 }
