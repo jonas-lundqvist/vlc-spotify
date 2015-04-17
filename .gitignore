@@ -3,3 +3,5 @@ src/*.o
 src/*.so
 src/*.dll
 src/appkey.c
+tests/*.o
+tests/test_uriparser
