@@ -112,8 +112,9 @@ static int Demux(demux_t *p_demux);
 static void *spotify_thread(void *data);
 static void cleanup_spotify_thread(void *data);
 void set_track_meta(demux_sys_t *p_sys);
+void clear_track_meta(demux_sys_t *p_sys);
 input_item_t *get_current_item(demux_t *p_demux);
-static void playlist_meta_done(sp_albumbrowse *result, void *userdata);
+static SP_CALLCONV void playlist_meta_done(sp_albumbrowse *result, void *userdata);
 
 static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error);
 static SP_CALLCONV void spotify_logged_out(sp_session *sess);
@@ -308,27 +309,48 @@ static int Demux(demux_t *p_demux)
 {
     demux_sys_t *p_sys = p_demux->p_sys;
 
-    msg_Dbg(p_demux, "Demux...");
     vlc_mutex_lock(&p_sys->playlist_lock);
     if (p_sys->playlist_meta_set == true) {
-        msg_Dbg(p_demux, "Demuxing an album!");
-        /*input_item_t *p_new_input;
+        int num_tracks = sp_albumbrowse_num_tracks(p_sys->p_albumbrowse);
+        int i;
+        char track_uri[255];
+        sp_link *track_link;
+
+        msg_Dbg(p_demux, "Demuxing an album! %d num of tracks", num_tracks);
+        input_item_t *p_new_input;
         input_item_t *p_current_input = get_current_item(p_demux);
 
         input_item_node_t *p_input_node = NULL;
         p_input_node = input_item_node_Create(p_current_input);
 
-        p_new_input = input_item_New("spotify://spotify:track:asdf", "spotify:track:qwerty");
-        input_item_CopyOptions(p_input_node->p_item, p_new_input);
-        input_item_node_AppendItem(p_input_node, p_new_input);
-        vlc_gc_decref(p_new_input);
+        for(i = 0; i < num_tracks; i++) {
+            char complete_uri[255] = "spotify://";
+            p_sys->p_track = sp_albumbrowse_track(p_sys->p_albumbrowse, i);
+            set_track_meta(p_sys);
+            track_link = sp_link_create_from_track(p_sys->p_track, 0);
+            sp_link_as_string(track_link, track_uri, 255);
+            p_new_input = input_item_New(strcat(complete_uri, track_uri),
+                                         p_sys->psz_meta_track);
+
+            input_item_SetArtist(p_new_input, p_sys->psz_meta_artist);
+            input_item_SetDuration(p_new_input,
+                                   sp_track_duration(p_sys->p_track)*1000);
+
+            input_item_CopyOptions(p_input_node->p_item, p_new_input);
+            input_item_node_AppendItem(p_input_node, p_new_input);
+            vlc_gc_decref(p_new_input);
+            msg_Dbg(p_demux, "Added %s to playlist with URI %s", p_sys->psz_meta_track, complete_uri);
+            clear_track_meta(p_sys);
+        }
 
         input_item_node_PostAndDelete(p_input_node);
         p_input_node = NULL;
         vlc_gc_decref(p_current_input);
-        testDemux = 1;*/
 
         vlc_mutex_unlock(&p_sys->playlist_lock);
+
+        msg_Dbg(p_demux, "< sp_albumbrowse_release()");
+        sp_albumbrowse_release(p_sys->p_albumbrowse);
 
         return 0;
     }
@@ -799,7 +821,23 @@ void set_track_meta(demux_sys_t *p_sys)
         p_sys->psz_meta_artist = strdup(sp_artist_name(artist));
 }
 
-static void playlist_meta_done(sp_albumbrowse *result, void *userdata)
+void clear_track_meta(demux_sys_t *p_sys)
+{
+    if (p_sys->psz_meta_track != NULL) {
+        free(p_sys->psz_meta_track);
+        p_sys->psz_meta_track = NULL;
+    }
+    if (p_sys->psz_meta_album != NULL) {
+        free(p_sys->psz_meta_album);
+        p_sys->psz_meta_album = NULL;
+    }
+    if (p_sys->psz_meta_artist != NULL) {
+        free(p_sys->psz_meta_artist);
+        p_sys->psz_meta_artist = NULL;
+    }
+}
+
+static SP_CALLCONV void playlist_meta_done(sp_albumbrowse *result, void *userdata)
 {
     demux_t *p_demux = (demux_t *) userdata;
     demux_sys_t *p_sys = p_demux->p_sys;
@@ -809,9 +847,6 @@ static void playlist_meta_done(sp_albumbrowse *result, void *userdata)
     vlc_mutex_lock(&p_sys->playlist_lock);
     p_sys->playlist_meta_set = true;
     vlc_mutex_unlock(&p_sys->playlist_lock);
-
-    msg_Dbg(p_demux, "< sp_albumbrowse_release()");
-    sp_albumbrowse_release(p_sys->p_albumbrowse);
 
     vlc_mutex_lock(&p_sys->lock);
     p_sys->start_procedure_done = true;

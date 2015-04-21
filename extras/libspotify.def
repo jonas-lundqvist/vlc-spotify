@@ -1,11 +1,19 @@
 ; i686-w64-mingw32-dlltool -z libspotify.def --export-all-symbol libspotify.dll
 LIBRARY LIBSPOTIFY.DLL
 EXPORTS
+sp_album_add_ref@4
+sp_albumbrowse_create@16
+sp_albumbrowse_num_tracks@4
+sp_albumbrowse_release@4
+sp_albumbrowse_track@8
 sp_album_name@4
 sp_artist_name@4
 sp_error_message@4
+sp_link_as_album@4
+sp_link_as_string@12
 sp_link_as_track@4
 sp_link_create_from_string@4
+sp_link_create_from_track@8
 sp_link_release@4
 sp_session_create@8
 sp_session_forget_me@4
