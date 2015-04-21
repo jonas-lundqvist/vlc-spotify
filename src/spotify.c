@@ -102,8 +102,8 @@ static void Close(vlc_object_t *object);
 static int Control(demux_t *p_demux, int i_query, va_list args);
 static int Demux(demux_t *p_demux);
 
-static void *Run(void *data);
-static void CleanupThread(void *data);
+static void *spotify_thread(void *data);
+static void cleanup_spotify_thread(void *data);
 void set_track_meta(demux_sys_t *p_sys);
 
 static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error);
@@ -207,7 +207,7 @@ static int Open(vlc_object_t *obj)
     p_sys->psz_meta_track = p_sys->psz_meta_artist = p_sys->psz_meta_album = NULL;
 
     // Create the thread that will handle the spotify activities
-    if (vlc_clone(&p_sys->thread, Run, p_demux, VLC_THREAD_PRIORITY_LOW)) {
+    if (vlc_clone(&p_sys->thread, spotify_thread, p_demux, VLC_THREAD_PRIORITY_LOW)) {
         vlc_cond_destroy(&p_sys->wait);
         vlc_mutex_destroy(&p_sys->lock);
         vlc_mutex_destroy(&p_sys->cleanup_lock);
@@ -409,7 +409,7 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
 }
 
 // TODO: Put the login and creation of the Spotify session somewhere else.
-static void *Run(void *data)
+static void *spotify_thread(void *data)
 {
     demux_t *p_demux = (demux_t *) data;
     demux_sys_t *p_sys = p_demux->p_sys;
@@ -448,7 +448,7 @@ static void *Run(void *data)
 
     for (;;) {
         vlc_mutex_lock(&p_sys->lock);
-        vlc_cleanup_push(CleanupThread, p_demux);
+        vlc_cleanup_push(cleanup_spotify_thread, p_demux);
 
         // Allow cancelation from here.
         vlc_restorecancel(canc);
@@ -501,7 +501,7 @@ static void *Run(void *data)
     return NULL;
 }
 
-static void CleanupThread(void *data)
+static void cleanup_spotify_thread(void *data)
 {
     demux_t *p_demux = (demux_t *) data;
     demux_sys_t *p_sys = p_demux->p_sys;
