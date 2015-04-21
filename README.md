@@ -1,7 +1,7 @@
 About
 =====
 This plugin adds support for playing spotify tracks in VLC media player.
-The code should be seen as a prototype and is known to work badly, I can't claim that it is "work in progress" since I don't really know if I will further develop it into something useful. Please fork! :)
+The code should be seen as a prototype and I can't claim that it is "work in progress" since I don't really know if I will further develop it into something useful. Please fork! :)
 
 Why?
 ====
