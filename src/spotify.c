@@ -81,7 +81,7 @@ struct demux_sys_t {
     date_t          pts;
     date_t          starttime;
     mtime_t         duration;
-    mtime_t         pts_offset;;
+    mtime_t         pts_offset;
 
     // TODO: Due to libspotify limitations there can be only one
     // sp_session. This one could be made persistant in the future.
