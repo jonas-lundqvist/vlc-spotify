@@ -104,7 +104,7 @@ static int Demux(demux_t *p_demux);
 
 static void *Run(void *data);
 static void CleanupThread(void *data);
-void setMeta(demux_sys_t *p_sys);
+void set_track_meta(demux_sys_t *p_sys);
 
 static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error);
 static SP_CALLCONV void spotify_logged_out(sp_session *sess);
@@ -392,7 +392,7 @@ static int Control(demux_t *p_demux, int i_query, va_list args)
 
     case DEMUX_GET_META:
         p_meta = (vlc_meta_t*) va_arg(args, vlc_meta_t*);
-        setMeta(p_sys);
+        set_track_meta(p_sys);
         if (p_sys->psz_meta_track)
             vlc_meta_Set(p_meta, vlc_meta_Title, p_sys->psz_meta_track);
         if (p_sys->psz_meta_artist)
@@ -703,7 +703,7 @@ static SP_CALLCONV int spotify_music_delivery(sp_session *sess, const sp_audiofo
     return num_frames;
 }
 
-void setMeta(demux_sys_t *p_sys)
+void set_track_meta(demux_sys_t *p_sys)
 {
     const char *track = sp_track_name(p_sys->p_track);
     sp_album *album;
