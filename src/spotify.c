@@ -329,10 +329,16 @@ static int Demux(demux_t *p_demux)
             set_track_meta(p_sys);
             track_link = sp_link_create_from_track(p_sys->p_track, 0);
             sp_link_as_string(track_link, track_uri, 255);
+
             p_new_input = input_item_New(strcat(complete_uri, track_uri),
                                          p_sys->psz_meta_track);
 
-            input_item_SetArtist(p_new_input, p_sys->psz_meta_artist);
+            if (p_sys->psz_meta_artist)
+                input_item_SetArtist(p_new_input, p_sys->psz_meta_artist);
+
+            if (p_sys->psz_meta_album)
+                input_item_SetMeta(p_new_input, vlc_meta_Album, p_sys->psz_meta_album);
+
             input_item_SetDuration(p_new_input,
                                    sp_track_duration(p_sys->p_track)*1000);
 
