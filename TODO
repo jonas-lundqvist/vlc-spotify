@@ -8,6 +8,7 @@ Short term:
 * User specified spotify-cache directory
 * Proper buildsystem (CMake?)
 * Update URI Parser to handle file://
+* Update URI Parser to handle https://open.spotify.com/
 * Ability to set app key at runtime when appkey.c is not present at compile time
 
 Long term:
