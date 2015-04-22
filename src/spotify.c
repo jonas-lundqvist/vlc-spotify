@@ -557,7 +557,7 @@ static void *spotify_thread(void *data)
                 p_sys->p_track = NULL;
                 msg_Dbg(p_demux, "> sp_player_unload()");
                 sp_session_player_unload(p_sys->p_session);
-            } else if (p_sys->spotify_type == SPOTIFY_TRACK) {
+            } else if (p_sys->spotify_type == SPOTIFY_ALBUM) {
                 msg_Dbg(p_demux, "> sp_album_release()");
                 sp_album_release(p_sys->p_album);
                 p_sys->p_album = NULL;
