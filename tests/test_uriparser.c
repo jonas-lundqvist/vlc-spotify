@@ -37,8 +37,8 @@ const char *test_vector_in[] = {
 };
 
 const char *test_vector_out[] = {
-    "\0",
-    "\0",
+    "spotify:track:6wNTqBF2Y69KG9EPyj9YJD",
+    "spotify:album:7GTYvV0u1AqBc8djyZdhuv",
     "\0",
     "\0",
     "\0",
@@ -64,14 +64,15 @@ int main(int argc, char *argv[]) {
 
     for(i = 0; i < num_tests; i++) {
         int verdict = 0;
-        char out[255] = "\0";
-        result = ParseURI(test_vector_in[i], out);
+        char *out;
+        result = ParseURI(test_vector_in[i], &out);
 
         if (result == test_result[i] && strcmp(test_vector_out[i], out) == 0) {
             verdict = 1;
             total_pass++;
         }
-        printf("[#%d] %s: %s\n", i, test_vector_in[i], verdict ? "PASS":"FAIL");
+        printf("[#%d] \"%s\" -> \"%s\": %s\n", i, test_vector_in[i], out, verdict ? "PASS":"FAIL");
+        free(out);
     }
 
     if (total_pass == num_tests) {

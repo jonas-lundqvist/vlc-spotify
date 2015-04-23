@@ -28,4 +28,4 @@ typedef enum {
     SPOTIFY_UNKNOWN
 } spotify_type_e;
 
-spotify_type_e ParseURI(const char *uri_in, char *uri_out);
+spotify_type_e ParseURI(const char *uri_in, char **uri_out);

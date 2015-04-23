@@ -26,12 +26,16 @@
 
 #include "uriparser.h"
 
-spotify_type_e ParseURI(const char *uri_in, char *uri_out)
+spotify_type_e ParseURI(const char *uri_in, char **uri_out)
 {
     char         *psz_dup = strdup(uri_in);
     char         *psz_parser = psz_dup;
     char         *tmp;
+
     spotify_type_e spotify_type = SPOTIFY_UNKNOWN;
+
+    *uri_out = (char *) malloc(36);
+    strcpy(*uri_out, "");
 
     if (psz_parser == NULL) {
         free(psz_dup);
@@ -65,6 +69,8 @@ spotify_type_e ParseURI(const char *uri_in, char *uri_out)
     // Check that the id is 22 chars
     if (strlen(psz_parser) != 22) {
         spotify_type = SPOTIFY_UNKNOWN;
+    } else {
+        strcat(*uri_out, psz_dup);
     }
 
     free(psz_dup);
