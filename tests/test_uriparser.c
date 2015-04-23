@@ -22,10 +22,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "uriparser.h"
 
-const char *test_vector[] = {
+const char *test_vector_in[] = {
     "spotify:track:6wNTqBF2Y69KG9EPyj9YJD",
     "spotify:album:7GTYvV0u1AqBc8djyZdhuv",
     "track:6wNTqBF2Y69KG9EPyj9YJD",          // Missing 'spotify:'
@@ -33,6 +34,16 @@ const char *test_vector[] = {
     "",                                      // Empty string
     "spotify:track:6wNTqBF2Y69KG9EPyj9YJD1", // 1 char to many
     "spotify:track:6wNTqBF2Y69KG9EPyj9YJ"    // 1 char to few
+};
+
+const char *test_vector_out[] = {
+    "\0",
+    "\0",
+    "\0",
+    "\0",
+    "\0",
+    "\0",
+    "\0"
 };
 
 const spotify_type_e test_result[] = {
@@ -49,21 +60,26 @@ int main(int argc, char *argv[]) {
     int num_tests = sizeof(test_result) / sizeof(spotify_type_e);
     int i;
     spotify_type_e result;
-    int total = 0;
+    int total_pass = 0;
 
     for(i = 0; i < num_tests; i++) {
-        result = ParseURI(test_vector[i], NULL);
-        printf("[#%d] %s: %s\n", i, test_vector[i], result == test_result[i] ? "PASS":"FAIL");
-        if (result == test_result[i]) {
-            total++;
+        int verdict = 0;
+        char out[255] = "\0";
+        result = ParseURI(test_vector_in[i], out);
+
+        if (result == test_result[i] && strcmp(test_vector_out[i], out) == 0) {
+            verdict = 1;
+            total_pass++;
         }
+        printf("[#%d] %s: %s\n", i, test_vector_in[i], verdict ? "PASS":"FAIL");
     }
 
-    if (total == num_tests) {
-        printf("All PASS %d/%d\n", total, total);
+    if (total_pass == num_tests) {
+        printf("All PASS %d/%d\n", total_pass, num_tests);
         return EXIT_SUCCESS;
     } else {
-        printf("%d of %d PASSED\n", total, num_tests);
+        printf("%d of %d pass\n", total_pass, num_tests);
+        printf("Test FAILED\n");
         return EXIT_FAILURE;
     }
 }
