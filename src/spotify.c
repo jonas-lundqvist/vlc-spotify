@@ -163,7 +163,7 @@ vlc_module_begin()
     // TODO: Handle spotify:// and file://
     // This will implicitly handle "vlc spotify:tra.." since file://<path> will be
     // prepended, although there is no real file.
-    add_shortcut("spotify")
+    add_shortcut("spotify", "http", "https")
     add_string("spotify-username", "",
                 "Username", "Spotify Username", false)
     add_password("spotify-password", "",
@@ -550,6 +550,7 @@ static void *spotify_thread(void *data)
         // CLEANUP_PENDING is set from Close()
         vlc_mutex_lock(&p_sys->cleanup_lock);
         if (p_sys->cleanup == CLEANUP_PENDING) {
+            sp_session_player_play(p_sys->p_session, 0);
             if (p_sys->spotify_type == SPOTIFY_TRACK) {
                 msg_Dbg(p_demux, "> sp_track_release()");
                 sp_track_release(p_sys->p_track);
@@ -618,7 +619,7 @@ static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error)
         msg_Dbg(p_demux, "> sp_link_release()");
         sp_link_release(link);
     } else if (p_sys->spotify_type == SPOTIFY_ALBUM) {
-        link = sp_link_create_from_string(p_demux->psz_location);
+        link = sp_link_create_from_string(p_sys->psz_uri);
         msg_Dbg(p_demux, "> sp_album_add_ref(sp_link_as_album())");
         sp_album_add_ref(p_sys->p_album = sp_link_as_album(link));
         msg_Dbg(p_demux, "> sp_albumbrowse_create()");
@@ -648,7 +649,7 @@ static SP_CALLCONV void spotify_metadata_updated(sp_session *sess)
 
     msg_Dbg(p_demux, "< metadata_updated()");
 
-    if (p_sys->spotify_type == SPOTIFY_TRACK) {
+    if (p_sys->spotify_type == SPOTIFY_TRACK && p_sys->play_started == false) {
         msg_Dbg(p_demux, "> sp_session_player_load()");
         vlc_mutex_lock(&p_sys->audio_lock);
         sp_session_player_load(p_sys->p_session, p_sys->p_track);
