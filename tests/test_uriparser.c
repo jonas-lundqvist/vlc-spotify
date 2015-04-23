@@ -33,7 +33,13 @@ const char *test_vector_in[] = {
     "album:7GTYvV0u1AqBc8djyZdhuv",          // Missing 'spotify:'
     "",                                      // Empty string
     "spotify:track:6wNTqBF2Y69KG9EPyj9YJD1", // 1 char to many
-    "spotify:track:6wNTqBF2Y69KG9EPyj9YJ"    // 1 char to few
+    "spotify:track:6wNTqBF2Y69KG9EPyj9YJ",   // 1 char to few
+    "open.spotify.com/album/5oSyyX0MX9MgVMeZ6cF6hu",
+    "open.spotify.com/track/6WoNBlwgSRD3CEeOlrQSXq",
+    "open.spotify.com/track/BlwgSRD3CEeOlrQSXq", // Short id
+    "open.spotify.com/trac/6WoNBlwgSRD3CEeOlrQSXq", // incorrect 'trac'
+    "open.spotify.com/trac/6WoNBlwgSRD3CEeOlrQSXq1", // incorrect 'trac' but too long id. Total length OK.
+
 };
 
 const char *test_vector_out[] = {
@@ -53,7 +59,12 @@ const spotify_type_e test_result[] = {
     SPOTIFY_UNKNOWN,
     SPOTIFY_UNKNOWN,
     SPOTIFY_UNKNOWN,
-    SPOTIFY_UNKNOWN
+    SPOTIFY_UNKNOWN,
+    SPOTIFY_ALBUM,
+    SPOTIFY_TRACK,
+    SPOTIFY_UNKNOWN,
+    SPOTIFY_UNKNOWN,
+    SPOTIFY_UNKNOWN,
 };
 
 int main(int argc, char *argv[]) {
