@@ -38,18 +38,22 @@ const char *test_vector_in[] = {
     "open.spotify.com/track/6WoNBlwgSRD3CEeOlrQSXq",
     "open.spotify.com/track/BlwgSRD3CEeOlrQSXq", // Short id
     "open.spotify.com/trac/6WoNBlwgSRD3CEeOlrQSXq", // incorrect 'trac'
-    "open.spotify.com/trac/6WoNBlwgSRD3CEeOlrQSXq1", // incorrect 'trac' but too long id. Total length OK.
-
+    "open.spotify.com/trac/6WoNBlwgSRD3CEeOlrQSXq1" // incorrect 'trac' but too long id. Total length OK.
 };
 
 const char *test_vector_out[] = {
     "spotify:track:6wNTqBF2Y69KG9EPyj9YJD",
     "spotify:album:7GTYvV0u1AqBc8djyZdhuv",
-    "\0",
-    "\0",
-    "\0",
-    "\0",
-    "\0"
+    "",
+    "",
+    "",
+    "",
+    "",
+    "spotify:album:5oSyyX0MX9MgVMeZ6cF6hu",
+    "spotify:track:6WoNBlwgSRD3CEeOlrQSXq",
+    "",
+    "",
+    ""
 };
 
 const spotify_type_e test_result[] = {
