@@ -21,7 +21,6 @@
  *****************************************************************************/
 
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "uriparser.h"
@@ -34,6 +33,7 @@ spotify_type_e ParseURI(const char *uri_in, char **uri_out)
 
     spotify_type_e spotify_type = SPOTIFY_UNKNOWN;
 
+    // TODO: The 36 needs to be adjusted when dealing with user playlists
     *uri_out = (char *) malloc(36);
     strcpy(*uri_out, "");
 
@@ -42,26 +42,34 @@ spotify_type_e ParseURI(const char *uri_in, char **uri_out)
         return SPOTIFY_UNKNOWN;
     }
 
-    if (strlen(psz_parser) < 36) {
-        free(psz_dup);
-        return SPOTIFY_UNKNOWN;
-    }
-
     // Find 'spotify:' and make sure it is in the start
     tmp = strstr(psz_parser, "spotify:");
-    if (tmp != psz_parser) {
-        free(psz_dup);
-        return SPOTIFY_UNKNOWN;
+    if (tmp == psz_parser) {
+        psz_parser += 8; // strlen("spotify:")
+    } else {
+        // Find 'open.spotify.com/' instead
+        tmp = strstr(psz_parser, "open.spotify.com/");
+        if (tmp == psz_parser) {
+            psz_parser += 17; // strlen("open.spotify.com/")
+        } else {
+            *uri_out[0] = (char) '\0';
+            free(psz_dup);
+            return SPOTIFY_UNKNOWN;
+        }
     }
 
-    psz_parser += 8;
+    strcat(*uri_out, "spotify:");
 
-    if ((tmp = strstr(psz_parser, "track:")) == psz_parser) {
+    if (((tmp = strstr(psz_parser, "track:")) == psz_parser) ||
+        ((tmp = strstr(psz_parser, "track/")) == psz_parser)) {
         spotify_type = SPOTIFY_TRACK;
         psz_parser += 6;
-    } else if ((tmp = strstr(psz_parser, "album:")) == psz_parser) {
+        strcat(*uri_out, "track:");
+    } else if (((tmp = strstr(psz_parser, "album:")) == psz_parser) ||
+               ((tmp = strstr(psz_parser, "album/")) == psz_parser)) {
         spotify_type = SPOTIFY_ALBUM;
         psz_parser += 6;
+        strcat(*uri_out, "album:");
     } else {
         spotify_type = SPOTIFY_UNKNOWN;
     }
@@ -69,8 +77,9 @@ spotify_type_e ParseURI(const char *uri_in, char **uri_out)
     // Check that the id is 22 chars
     if (strlen(psz_parser) != 22) {
         spotify_type = SPOTIFY_UNKNOWN;
+        *uri_out[0] = (char) '\0';
     } else {
-        strcat(*uri_out, psz_dup);
+        strcat(*uri_out, psz_parser);
     }
 
     free(psz_dup);
