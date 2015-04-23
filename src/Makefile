@@ -19,6 +19,8 @@ CPPFLAGS = -DPIC -I. -Isrc -DMODULE_STRING=\"spotify\"
 
 ifneq ($(OS),win32)
 	override LDFLAGS += -Wl,-z,defs
+else
+	override LDFLAGS += -static-libgcc
 endif
 
 TARGET = libspotify_plugin.so
