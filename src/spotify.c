@@ -184,13 +184,13 @@ static int Open(vlc_object_t *obj)
 
     p_demux->p_sys = p_sys;
 
-    // TODO, set p_sys->psz_uri as 2nd parameter
-    p_sys->spotify_type = ParseURI(p_demux->psz_location, NULL);
+    p_sys->spotify_type = ParseURI(p_demux->psz_location, &p_sys->psz_uri);
 
-    msg_Dbg(p_demux, "URI is %s", p_demux->psz_location);
+    msg_Dbg(p_demux, "URI is %s", p_sys->psz_uri);
 
     // TODO: Support playlists (and more?)
     if (p_sys->spotify_type != SPOTIFY_TRACK && p_sys->spotify_type != SPOTIFY_ALBUM) {
+        free(p_sys->psz_uri);
         free(p_sys);
         return VLC_EGENERIC;
     }
@@ -213,7 +213,6 @@ static int Open(vlc_object_t *obj)
 
     p_sys->play_started = false;
     p_sys->cleanup = CLEANUP_NOT_STARTED;
-    p_sys->psz_uri = strdup(p_demux->psz_location);
     p_sys->format_set = false;
     p_sys->p_session = NULL;
     p_sys->p_es_audio = NULL;
