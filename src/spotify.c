@@ -960,6 +960,7 @@ static SP_CALLCONV void playlist_meta_done(sp_albumbrowse *result, void *userdat
     vlc_mutex_lock(&p_sys->lock);
     p_sys->start_procedure_done = true;
     p_sys->start_procedure_succesful = true;
+    p_sys->manual_login_ongoing = false;
     vlc_cond_signal(&p_sys->wait);
     p_sys->play_started = true;
     vlc_mutex_unlock(&p_sys->lock);
