@@ -72,6 +72,7 @@ struct demux_sys_t {
     bool            format_set;
     bool            start_procedure_done;
     bool            start_procedure_succesful;
+    bool            manual_login_ongoing;
 
     cleanup_state_e cleanup;
 
@@ -185,9 +186,7 @@ vlc_module_begin()
     // prepended, although there is no real file.
     add_shortcut("spotify", "http", "https")
     add_string("spotify-username", "",
-                "Username", "Spotify Username", false)
-    add_password("spotify-password", "",
-                "Password", "Spotify Password", false)
+               "Username", "Spotify Username", false)
     add_integer("preferred_bitrate", SP_BITRATE_320k, "Preferred bitrate", "The preferred bitrate of the audio", true)
         change_integer_list(pref_bitrate, pref_bitrate_text)
     // TODO: Add 'spotify social'
@@ -225,6 +224,7 @@ static int Open(vlc_object_t *obj)
 
     p_sys->start_procedure_done = false;
     p_sys->start_procedure_succesful = false;
+    p_sys->manual_login_ongoing = false;
 
     vlc_mutex_init(&p_sys->lock);
     vlc_mutex_init(&p_sys->cleanup_lock);
@@ -256,11 +256,13 @@ static int Open(vlc_object_t *obj)
 
     // Wait until we are logged in and playing until we return SUCCESS
     // Or bail out after START_STOP_PROCEDURE_TIMEOUT_US
+    // Unless login is ongoing
     deadline = mdate() + START_STOP_PROCEDURE_TIMEOUT_US;
     vlc_mutex_lock(&p_sys->lock);
     do {
         vlc_cond_timedwait(&p_sys->wait, &p_sys->lock, deadline);
-    } while(mdate() < deadline && p_sys->start_procedure_done == false);
+    } while((p_sys->manual_login_ongoing) ||
+            (mdate() < deadline && p_sys->start_procedure_done == false));
 
     vlc_mutex_unlock(&p_sys->lock);
 
@@ -526,11 +528,10 @@ static void *spotify_main_loop(void *data)
     sp_bitrate   spotify_bitrate;
     char         stored_username[255];
 
-    psz_username = var_InheritString(p_demux, "spotify-username");
-    psz_password = var_InheritString(p_demux, "spotify-password");
-
     p_sys->spotify_notification = false;
     vlc_cond_init(&p_sys->spotify_wait);
+
+    psz_username = var_InheritString(p_demux, "spotify-username");
 
     spconfig.application_key_size = g_appkey_size;
     spconfig.userdata = p_demux;
@@ -548,7 +549,7 @@ static void *spotify_main_loop(void *data)
         msg_Dbg(p_demux, "Error setting the preferred bitrate");
     }
 
-    if (sp_session_remembered_user(p_sys->p_session, stored_username, 10) != -1) {
+    if (sp_session_remembered_user(p_sys->p_session, stored_username, 255) != -1) {
         msg_Dbg(p_demux, "Username \"%s\" remembered -> sp_session_relogin()", stored_username);
         sp_session_relogin(p_sys->p_session);
     } else if (credentials != NULL) {
@@ -556,7 +557,19 @@ static void *spotify_main_loop(void *data)
         sp_session_login(p_sys->p_session, psz_username, NULL, 1, credentials);
     } else {
         msg_Dbg(p_demux, "> sp_session_login() with user/pass");
-        sp_session_login(p_sys->p_session, psz_username, psz_password, 1, NULL);
+        vlc_mutex_lock(&p_sys->lock);
+        p_sys->manual_login_ongoing = true;
+        vlc_mutex_unlock(&p_sys->lock);
+        dialog_Login(p_demux, &psz_username, &psz_password,
+                     "Spotify login", "%s",
+                     "Please enter valid username and password");
+        if(psz_username != NULL && psz_password != NULL) {
+            sp_session_login(p_sys->p_session, psz_username, psz_password, 1, NULL);
+            free(psz_username);
+            free(psz_password);
+        } else {
+            msg_Dbg(p_demux, "Login dialog failed");
+        }
     }
 
     for (;;) {
@@ -637,12 +650,19 @@ static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error)
     demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
     demux_sys_t *p_sys = p_demux->p_sys;
 
-
     sp_link *link;
     msg_Dbg(p_demux, "< logged_in()");
 
+    // TODO: Trigger relogin if username/password is incorrect
     if (SP_ERROR_OK != error) {
         dialog_Fatal(p_demux, "Login Error: ","%s", sp_error_message(error));
+        vlc_mutex_lock(&p_sys->lock);
+        p_sys->start_procedure_done = true;
+        p_sys->start_procedure_succesful = false;
+        p_sys->manual_login_ongoing = false;
+        vlc_cond_signal(&p_sys->wait);
+        vlc_mutex_unlock(&p_sys->lock);
+
         return;
     }
 
@@ -697,6 +717,7 @@ static SP_CALLCONV void spotify_metadata_updated(sp_session *sess)
             vlc_mutex_lock(&p_sys->lock);
             p_sys->start_procedure_done = true;
             p_sys->start_procedure_succesful = true;
+            p_sys->manual_login_ongoing = false;
             vlc_cond_signal(&p_sys->wait);
             p_sys->play_started = true;
             vlc_mutex_unlock(&p_sys->lock);

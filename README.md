@@ -19,7 +19,7 @@ Installation
 Get an appkey from spotify and copy it to *src/appkey.c*.
 View and edit the Makefile in the *src/* directory if necessary.
 
-For \*nix
+For linux
 ---------
 Type *make*.
 Copy the *src/libspotify_plugin.so* to the vlc access plugins folder, possibly */usr/lib/vlc/plugins/access*
@@ -36,13 +36,15 @@ Copy the *libspotify_plugin.dll* to the windows systems *vlc/plugins/access/* fo
 
 Usage
 =====
-Start VLC and find the spotify preferences and set your username/password.
+Start VLC and find the spotify preferences and set the option(s) accordingly.
 
 Start from gui:
 File -> Open Network Stream -> spotify://spotify:track:6wNTqBF2Y69KG9EPyj9YJD -> Play
 
 Or from command line:
 vlc spotify://spotify:track:6wNTqBF2Y69KG9EPyj9YJD
+
+vlc-spotify also supports https://open.spotify.com/ URLs.
 
 License
 =======
