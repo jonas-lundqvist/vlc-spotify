@@ -122,23 +122,24 @@ void clear_track_meta(demux_sys_t *p_sys);
 input_item_t *get_current_item(demux_t *p_demux);
 static SP_CALLCONV void playlist_meta_done(sp_albumbrowse *result, void *userdata);
 
-static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error);
-static SP_CALLCONV void spotify_logged_out(sp_session *sess);
-static SP_CALLCONV void spotify_log_message(sp_session *sess, const char *msg);
-static SP_CALLCONV void spotify_notify_main_thread(sp_session *sess);
-static SP_CALLCONV int spotify_music_delivery(sp_session *sess, const sp_audioformat *format,
+static SP_CALLCONV void spotify_logged_in(sp_session *session, sp_error error);
+static SP_CALLCONV void spotify_logged_out(sp_session *session);
+static SP_CALLCONV void spotify_log_message(sp_session *session, const char *msg);
+static SP_CALLCONV void spotify_notify_main_thread(sp_session *session);
+static SP_CALLCONV int spotify_music_delivery(sp_session *session,
+                                              const sp_audioformat *format,
                                               const void *frames, int num_frames);
-static SP_CALLCONV void spotify_metadata_updated(sp_session *sess);
-static SP_CALLCONV void spotify_message_to_user(sp_session *sess, const char *msg);
-static SP_CALLCONV void spotify_play_token_lost(sp_session *sess);
-static SP_CALLCONV void spotify_end_of_track(sp_session *sess);
-static SP_CALLCONV void spotify_credentials_blob_updated(sp_session *sess,
+static SP_CALLCONV void spotify_metadata_updated(sp_session *session);
+static SP_CALLCONV void spotify_message_to_user(sp_session *session, const char *msg);
+static SP_CALLCONV void spotify_play_token_lost(sp_session *session);
+static SP_CALLCONV void spotify_end_of_track(sp_session *session);
+static SP_CALLCONV void spotify_credentials_blob_updated(sp_session *session,
                                                          const char *blob);
-static SP_CALLCONV void spotify_connectionstate_updated(sp_session *sess);
-static SP_CALLCONV void spotify_userinfo_updated(sp_session *sess);
+static SP_CALLCONV void spotify_connectionstate_updated(sp_session *session);
+static SP_CALLCONV void spotify_userinfo_updated(sp_session *session);
 
-static SP_CALLCONV void spotify_connection_error(sp_session *sess, sp_error error);
-static SP_CALLCONV void spotify_streaming_error(sp_session *sess, sp_error error);
+static SP_CALLCONV void spotify_connection_error(sp_session *session, sp_error error);
+static SP_CALLCONV void spotify_streaming_error(sp_session *session, sp_error error);
 
 static sp_session_callbacks spotify_session_callbacks = {
     .logged_in = &spotify_logged_in,
@@ -645,9 +646,9 @@ static void cleanup_spotify_main_loop(void *data)
 }
 
 // Called from sp_session_process_events()
-static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error)
+static SP_CALLCONV void spotify_logged_in(sp_session *session, sp_error error)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
     demux_sys_t *p_sys = p_demux->p_sys;
 
     sp_link *link;
@@ -684,9 +685,9 @@ static SP_CALLCONV void spotify_logged_in(sp_session *sess, sp_error error)
 }
 
 // Called from sp_session_process_events()
-static SP_CALLCONV void spotify_logged_out(sp_session *sess)
+static SP_CALLCONV void spotify_logged_out(sp_session *session)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
     demux_sys_t *p_sys = p_demux->p_sys;
 
     msg_Dbg(p_demux, "< logged_out()");
@@ -696,9 +697,9 @@ static SP_CALLCONV void spotify_logged_out(sp_session *sess)
 }
 
 // Called from sp_session_process_events()
-static SP_CALLCONV void spotify_metadata_updated(sp_session *sess)
+static SP_CALLCONV void spotify_metadata_updated(sp_session *session)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
     demux_sys_t *p_sys = p_demux->p_sys;
 
     msg_Dbg(p_demux, "< metadata_updated()");
@@ -728,50 +729,50 @@ static SP_CALLCONV void spotify_metadata_updated(sp_session *sess)
 }
 
 // Called from sp_session_process_events()
-static SP_CALLCONV void spotify_log_message(sp_session *sess, const char *msg)
+static SP_CALLCONV void spotify_log_message(sp_session *session, const char *msg)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
 
     msg_Dbg(p_demux, "< log_message(): %s", msg);
 }
 
 // Called from sp_session_process_events()
-static SP_CALLCONV void spotify_message_to_user(sp_session *sess, const char *msg)
+static SP_CALLCONV void spotify_message_to_user(sp_session *session, const char *msg)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
 
     // TODO: What kind of messages is this?
     // Is perhaps a dialog needed?
     msg_Dbg(p_demux, "< message_to_user(): %s", msg);
 }
 
-static SP_CALLCONV void spotify_streaming_error(sp_session *sess, sp_error error)
+static SP_CALLCONV void spotify_streaming_error(sp_session *session, sp_error error)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
 
     msg_Dbg(p_demux, "< streaming_error(): %s", sp_error_message(error));
 }
 
-static SP_CALLCONV void spotify_connection_error(sp_session *sess, sp_error error)
+static SP_CALLCONV void spotify_connection_error(sp_session *session, sp_error error)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
 
     msg_Dbg(p_demux, "< connection_error(): %s", sp_error_message(error));
 }
 
 // libspotify context
-static SP_CALLCONV void spotify_userinfo_updated(sp_session *sess)
+static SP_CALLCONV void spotify_userinfo_updated(sp_session *session)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
 
     msg_Dbg(p_demux, "< userinfo_updated()");
 }
 
 // libspotify context
-static SP_CALLCONV void spotify_credentials_blob_updated(sp_session *sess,
+static SP_CALLCONV void spotify_credentials_blob_updated(sp_session *session,
                                                          const char *blob)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
 
     msg_Dbg(p_demux, "< credentials_blobupdated() %s", blob);
 
@@ -783,18 +784,18 @@ static SP_CALLCONV void spotify_credentials_blob_updated(sp_session *sess,
 }
 
 // libspotify context
-static SP_CALLCONV void spotify_connectionstate_updated(sp_session *sess)
+static SP_CALLCONV void spotify_connectionstate_updated(sp_session *session)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
 
     msg_Dbg(p_demux, "< connectionstate_updated()");
 }
 
 
 // libspotify context
-static SP_CALLCONV void spotify_notify_main_thread(sp_session *sess)
+static SP_CALLCONV void spotify_notify_main_thread(sp_session *session)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
     demux_sys_t *p_sys = p_demux->p_sys;
 
     msg_Dbg(p_demux, "< notify_main_thread()");
@@ -805,9 +806,9 @@ static SP_CALLCONV void spotify_notify_main_thread(sp_session *sess)
 }
 
 // libspotify context
-static SP_CALLCONV void spotify_play_token_lost(sp_session *sess)
+static SP_CALLCONV void spotify_play_token_lost(sp_session *session)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
     demux_sys_t *p_sys = p_demux->p_sys;
     VLC_UNUSED(p_sys);
 
@@ -818,9 +819,9 @@ static SP_CALLCONV void spotify_play_token_lost(sp_session *sess)
 }
 
 // libspotify context
-static SP_CALLCONV void spotify_end_of_track(sp_session *sess)
+static SP_CALLCONV void spotify_end_of_track(sp_session *session)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
     demux_sys_t *p_sys = p_demux->p_sys;
 
     msg_Dbg(p_demux, "< end_of_track()");
@@ -834,10 +835,11 @@ static SP_CALLCONV void spotify_end_of_track(sp_session *sess)
 }
 
 // libspotify context
-static SP_CALLCONV int spotify_music_delivery(sp_session *sess, const sp_audioformat *format,
+static SP_CALLCONV int spotify_music_delivery(sp_session *session,
+                                              const sp_audioformat *format,
                                               const void *frames, int num_frames)
 {
-    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+    demux_t *p_demux = (demux_t *) sp_session_userdata(session);
     demux_sys_t *p_sys = p_demux->p_sys;
     mtime_t pts;
     block_t *p_block;
