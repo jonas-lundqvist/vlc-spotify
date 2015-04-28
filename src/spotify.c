@@ -105,9 +105,10 @@ static int Open(vlc_object_t *object);
 static void Close(vlc_object_t *object);
 
 // Needed for VLC demux module
-static int Control(demux_t *p_demux, int i_query, va_list args);
+static int TrackControl(demux_t *p_demux, int i_query, va_list args);
 static int PlaylistControl(demux_t *p_demux, int i_query, va_list args);
-static int Demux(demux_t *p_demux);
+static int TrackDemux(demux_t *p_demux);
+static int PlaylistDemux(demux_t *p_demux);
 
 static void *spotify_main_loop(void *data);
 static void cleanup_spotify_main_loop(void *data);
@@ -195,12 +196,13 @@ static int Open(vlc_object_t *obj)
         return VLC_EGENERIC;
     }
 
-    p_demux->pf_demux = Demux;
-
-    if (p_sys->spotify_type == SPOTIFY_TRACK)
-        p_demux->pf_control = Control;
-    else
+    if (p_sys->spotify_type == SPOTIFY_TRACK) {
+        p_demux->pf_demux = TrackDemux;
+        p_demux->pf_control = TrackControl;
+    } else {
         p_demux->pf_control = PlaylistControl;
+        p_demux->pf_demux = PlaylistDemux;
+    }
 
     p_sys->start_procedure_done = false;
     p_sys->start_procedure_succesful = false;
@@ -304,7 +306,22 @@ static void Close(vlc_object_t *obj)
     msg_Dbg(p_demux, "Closed succesfully");
 }
 
-static int Demux(demux_t *p_demux)
+static int TrackDemux(demux_t *p_demux)
+{
+    demux_sys_t *p_sys = p_demux->p_sys;
+
+    // Ugly hack. It seems like this is the only way to signal EOF
+    // TODO: es_out_Eos() might be something interesting...
+    if (p_sys->p_es_audio == NULL && p_sys->format_set == true)
+        return 0; // EOF, will close the module
+
+#undef msleep
+    // Sleep for 100 ms to not hammer the CPU
+    msleep(100000);
+    return 1;
+}
+
+static int PlaylistDemux(demux_t *p_demux)
 {
     demux_sys_t *p_sys = p_demux->p_sys;
 
@@ -356,24 +373,13 @@ static int Demux(demux_t *p_demux)
 
         msg_Dbg(p_demux, "< sp_albumbrowse_release()");
         sp_albumbrowse_release(p_sys->p_albumbrowse);
-
-        return 0;
     }
     vlc_mutex_unlock(&p_sys->playlist_lock);
 
-
-    // Ugly hack. It seems like this is the only way to signal EOF
-    // TODO: es_out_Eos() might be something interesting...
-    if (p_sys->p_es_audio == NULL && p_sys->format_set == true)
-        return 0; // EOF, will close the module
-
-#undef msleep
-    // Sleep for 100 ms to not hammer the CPU
-    msleep(100000);
-    return 1;
+    return 0;
 }
 
-static int Control(demux_t *p_demux, int i_query, va_list args)
+static int TrackControl(demux_t *p_demux, int i_query, va_list args)
 {
     demux_sys_t *p_sys = p_demux->p_sys;
     bool *pb;
