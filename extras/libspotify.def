@@ -27,6 +27,8 @@ sp_session_player_unload@4
 sp_session_preferred_bitrate@8
 sp_session_process_events@8
 sp_session_release@4
+sp_session_relogin@4
+sp_session_remembered_user@12
 sp_session_userdata@4
 sp_track_add_ref@4
 sp_track_album@4

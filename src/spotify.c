@@ -43,9 +43,11 @@
 #define START_STOP_PROCEDURE_TIMEOUT_US 5000000
 
 #ifndef _WIN32
-#define VLC_SPOTIFY_CACHE_DIR "/tmp/spot"
+#define VLC_SPOTIFY_CACHE_DIR "/tmp/vlc-spotify/cache"
+#define VLC_SPOTIFY_SETTINGS_DIR "/tmp/vlc-spotify/settings"
 #else
-#define VLC_SPOTIFY_CACHE_DIR "C:\\temp\\spot"
+#define VLC_SPOTIFY_CACHE_DIR "C:\\temp\\vlc-spotify\\cache"
+#define VLC_SPOTIFY_SETTINGS_DIR "C:\\temp\\vlc-spotify\\settings"
 #endif
 
 typedef enum {
@@ -97,6 +99,8 @@ struct demux_sys_t {
     sp_albumbrowse *p_albumbrowse;
 };
 
+static char *credentials = NULL;
+
 extern const uint8_t g_appkey[];
 extern const size_t g_appkey_size;
 
@@ -127,6 +131,13 @@ static SP_CALLCONV void spotify_metadata_updated(sp_session *sess);
 static SP_CALLCONV void spotify_message_to_user(sp_session *sess, const char *msg);
 static SP_CALLCONV void spotify_play_token_lost(sp_session *sess);
 static SP_CALLCONV void spotify_end_of_track(sp_session *sess);
+static SP_CALLCONV void spotify_credentials_blob_updated(sp_session *sess,
+                                                         const char *blob);
+static SP_CALLCONV void spotify_connectionstate_updated(sp_session *sess);
+static SP_CALLCONV void spotify_userinfo_updated(sp_session *sess);
+
+static SP_CALLCONV void spotify_connection_error(sp_session *sess, sp_error error);
+static SP_CALLCONV void spotify_streaming_error(sp_session *sess, sp_error error);
 
 static sp_session_callbacks spotify_session_callbacks = {
     .logged_in = &spotify_logged_in,
@@ -138,17 +149,25 @@ static sp_session_callbacks spotify_session_callbacks = {
     .log_message = &spotify_log_message,
     .message_to_user = &spotify_message_to_user,
     .end_of_track = &spotify_end_of_track,
+    .credentials_blob_updated = &spotify_credentials_blob_updated,
+    .connectionstate_updated = &spotify_connectionstate_updated,
+    .userinfo_updated = &spotify_userinfo_updated,
+    .connection_error = &spotify_connection_error,
+    .streaming_error = &spotify_streaming_error
 };
 
 static sp_session_config spconfig = {
     .api_version = SPOTIFY_API_VERSION,
     .cache_location = VLC_SPOTIFY_CACHE_DIR, // TODO: path to vlc data?
-    //.settings_location = "/tmp/spot", // Crashes at logout when enabled (!)
+    .settings_location = VLC_SPOTIFY_SETTINGS_DIR,
     .application_key = g_appkey,
     .application_key_size = 0,
     .user_agent = "vlc-spotify",
     .callbacks = &spotify_session_callbacks,
-    NULL,
+    .compress_playlists = false,
+    .dont_save_metadata_for_playlists = false,
+    .initially_unload_playlists = false,
+    NULL
 };
 
 static const char * const pref_bitrate_text[] = { "96 kbps", "160 kbps", "320 kbps" };
@@ -242,6 +261,7 @@ static int Open(vlc_object_t *obj)
     do {
         vlc_cond_timedwait(&p_sys->wait, &p_sys->lock, deadline);
     } while(mdate() < deadline && p_sys->start_procedure_done == false);
+
     vlc_mutex_unlock(&p_sys->lock);
 
     if (p_sys->start_procedure_succesful == false) {
@@ -252,6 +272,7 @@ static int Open(vlc_object_t *obj)
     }
 
     msg_Dbg(p_demux, "Started succesfully");
+
     return VLC_SUCCESS;
 }
 
@@ -263,8 +284,8 @@ static void Close(vlc_object_t *obj)
 
     msg_Dbg(p_demux, "Closing down");
 
-    // Tell the thread to start the cleanup
     vlc_mutex_lock(&p_sys->cleanup_lock);
+    // Tell the thread to start the cleanup
     if (p_sys->cleanup != CLEANUP_DONE) {
         deadline = mdate() + (START_STOP_PROCEDURE_TIMEOUT_US);
         p_sys->cleanup = CLEANUP_PENDING;
@@ -503,6 +524,7 @@ static void *spotify_main_loop(void *data)
     int          spotify_timeout = 0;
     mtime_t      spotify_timeout_us;
     sp_bitrate   spotify_bitrate;
+    char         stored_username[255];
 
     psz_username = var_InheritString(p_demux, "spotify-username");
     psz_password = var_InheritString(p_demux, "spotify-password");
@@ -526,8 +548,16 @@ static void *spotify_main_loop(void *data)
         msg_Dbg(p_demux, "Error setting the preferred bitrate");
     }
 
-    msg_Dbg(p_demux, "> sp_session_login()");
-    sp_session_login(p_sys->p_session, psz_username, psz_password, 0, NULL);
+    if (sp_session_remembered_user(p_sys->p_session, stored_username, 10) != -1) {
+        msg_Dbg(p_demux, "Username \"%s\" remembered -> sp_session_relogin()", stored_username);
+        sp_session_relogin(p_sys->p_session);
+    } else if (credentials != NULL) {
+        msg_Dbg(p_demux, "> sp_session_login() via blob");
+        sp_session_login(p_sys->p_session, psz_username, NULL, 1, credentials);
+    } else {
+        msg_Dbg(p_demux, "> sp_session_login() with user/pass");
+        sp_session_login(p_sys->p_session, psz_username, psz_password, 1, NULL);
+    }
 
     for (;;) {
         vlc_mutex_lock(&p_sys->lock);
@@ -569,8 +599,6 @@ static void *spotify_main_loop(void *data)
                 p_sys->p_album = NULL;
             }
 
-            msg_Dbg(p_demux, "> sp_session_forget_me()");
-            sp_session_forget_me(p_sys->p_session);
             msg_Dbg(p_demux, "> sp_session_logout()");
             sp_session_logout(p_sys->p_session);
             p_sys->cleanup = CLEANUP_STARTED;
@@ -695,6 +723,52 @@ static SP_CALLCONV void spotify_message_to_user(sp_session *sess, const char *ms
     // Is perhaps a dialog needed?
     msg_Dbg(p_demux, "< message_to_user(): %s", msg);
 }
+
+static SP_CALLCONV void spotify_streaming_error(sp_session *sess, sp_error error)
+{
+    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+
+    msg_Dbg(p_demux, "< streaming_error(): %s", sp_error_message(error));
+}
+
+static SP_CALLCONV void spotify_connection_error(sp_session *sess, sp_error error)
+{
+    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+
+    msg_Dbg(p_demux, "< connection_error(): %s", sp_error_message(error));
+}
+
+// libspotify context
+static SP_CALLCONV void spotify_userinfo_updated(sp_session *sess)
+{
+    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+
+    msg_Dbg(p_demux, "< userinfo_updated()");
+}
+
+// libspotify context
+static SP_CALLCONV void spotify_credentials_blob_updated(sp_session *sess,
+                                                         const char *blob)
+{
+    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+
+    msg_Dbg(p_demux, "< credentials_blobupdated() %s", blob);
+
+    if (credentials != NULL)
+        free(credentials);
+
+    // TODO: Save the blob to a file
+    credentials = strdup(blob);
+}
+
+// libspotify context
+static SP_CALLCONV void spotify_connectionstate_updated(sp_session *sess)
+{
+    demux_t *p_demux = (demux_t *) sp_session_userdata(sess);
+
+    msg_Dbg(p_demux, "< connectionstate_updated()");
+}
+
 
 // libspotify context
 static SP_CALLCONV void spotify_notify_main_thread(sp_session *sess)
