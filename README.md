@@ -1,3 +1,12 @@
+Status
+======
+The development of this project has been put on hold due to show stopping issues with libspotify that I don't have the energy to try to work around.
+I wrote a rant about it in a [blog post](https://jonaslundqvist.net/2015/05/06/do-not-use-libspotify/) with a follow-up [here](https://jonaslundqvist.net/2015/05/07/do-use-libspotify-later-this-year/).
+
+As Spotify says they plan to release a new library sometime later this year and then I might resume development.
+
+If someone still would like some feature or such please go ahead and create an issue and/or pull request here on GitHub and I'll see what I can do.
+
 About
 =====
 This plugin adds support for playing spotify tracks in VLC media player.
