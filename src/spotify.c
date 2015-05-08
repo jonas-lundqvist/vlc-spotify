@@ -317,13 +317,7 @@ static void Close(vlc_object_t *obj)
     vlc_mutex_destroy(&p_sys->audio_lock);
     vlc_mutex_destroy(&p_sys->playlist_lock);
 
-    // TODO: Create a function for this when adding more meta data
-    if (p_sys->psz_meta_track)
-        free(p_sys->psz_meta_track);
-    if (p_sys->psz_meta_artist)
-        free(p_sys->psz_meta_artist);
-    if (p_sys->psz_meta_album)
-        free(p_sys->psz_meta_album);
+    clear_track_meta(p_sys);
 
     free(p_sys->psz_uri);
     free(p_sys);
