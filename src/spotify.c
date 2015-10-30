@@ -362,24 +362,25 @@ static int PlaylistDemux(demux_t *p_demux)
             p_sys->p_track = sp_albumbrowse_track(p_sys->p_albumbrowse, i);
             set_track_meta(p_sys);
             track_link = sp_link_create_from_track(p_sys->p_track, 0);
-            sp_link_as_string(track_link, track_uri, 255);
+            sp_link_as_string(track_link, track_uri, sizeof(track_uri));
 
             p_new_input = input_item_New(strcat(complete_uri, track_uri),
                                          p_sys->psz_meta_track);
+            if (p_new_input) {
+                if (p_sys->psz_meta_artist)
+                    input_item_SetArtist(p_new_input, p_sys->psz_meta_artist);
 
-            if (p_sys->psz_meta_artist)
-                input_item_SetArtist(p_new_input, p_sys->psz_meta_artist);
+                if (p_sys->psz_meta_album)
+                    input_item_SetMeta(p_new_input, vlc_meta_Album, p_sys->psz_meta_album);
 
-            if (p_sys->psz_meta_album)
-                input_item_SetMeta(p_new_input, vlc_meta_Album, p_sys->psz_meta_album);
+                input_item_SetDuration(p_new_input,
+                                       sp_track_duration(p_sys->p_track)*1000);
 
-            input_item_SetDuration(p_new_input,
-                                   sp_track_duration(p_sys->p_track)*1000);
-
-            input_item_CopyOptions(p_input_node->p_item, p_new_input);
-            input_item_node_AppendItem(p_input_node, p_new_input);
-            vlc_gc_decref(p_new_input);
-            msg_Dbg(p_demux, "Added %s to playlist with URI %s", p_sys->psz_meta_track, complete_uri);
+                input_item_CopyOptions(p_input_node->p_item, p_new_input);
+                input_item_node_AppendItem(p_input_node, p_new_input);
+                vlc_gc_decref(p_new_input);
+                msg_Dbg(p_demux, "Added %s to playlist with URI %s", p_sys->psz_meta_track, complete_uri);
+            }
             clear_track_meta(p_sys);
         }
 
